@@ -1,97 +1,132 @@
-import React, { useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import HTMLFlipBook from "react-pageflip";
 
-function Book() {
+// Trang 2 -> 33 (32 trang nội dung)
+const pages = Array.from({ length: 32 }, (_, i) => i + 2);
 
-  const pokemonData = [
-    {
-      id: "006",
-      name: "Charizard",
-      types: ["Fire", "Flying"],
-      description: "Flies in search of strong opponents. Breathes extremely hot fire that melts anything, but never uses it on weaker foes."
-    },
-    {
-      id: "025",
-      name: "Pikachu",
-      types: ["Electric"],
-      description: "When Pikachu meet, they touch tails to exchange electricity as a greeting."
-    },
-    {
-      id: "125",
-      name: "Electabuzz",
-      types: ["Electric"],
-      description: "Often kept at power plants to regulate electricity. Competes with others to attract lightning during storms."
-    },
-    {
-      id: "185",
-      name: "Sudowoodo",
-      types: ["Rock"],
-      description: "Despite looking like a tree, its body is more like rock. Hates water and hides when it rains."
-    },
-    {
-      id: "448",
-      name: "Lucario",
-      types: ["Fighting", "Steel"],
-      description: "Can read thoughts and movements by sensing others' aura. No foe can hide from Lucario."
-    },
-    {
-      id: "658",
-      name: "Greninja",
-      types: ["Water", "Dark"],
-      description: "Creates throwing stars from compressed water that can slice through metal when thrown at high speed."
-    },
-    {
-      id: "491",
-      name: "Darkrai",
-      types: ["Dark"],
-      description: "A legendary Pokémon that appears on moonless nights, putting people to sleep and giving them nightmares."
-    }
-  ];
+// Lấy URL ảnh theo page index của flipbook
+// index 0 = bìa, index 1 = WorkbookPage2, index 2 = WorkbookPage3, ...
+const getImageUrl = (idx) => {
+  if (idx === 0) return '/WorkbookTopic1.png';
+  return `/WorkbookPage${idx + 1}.png`;
+};
+
+function Book() {
+  const bookRef   = useRef(null);
+  const audioRef  = useRef(new Audio('/858467__ym_the_cosmic__flipping-page-back.mp3'));
+  const [isZoomed, setIsZoomed]       = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const playFlipSound = () => {
+    const audio = audioRef.current;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  };
+
+  // Phát sound ngay khi nhấn nút — không đợi animation xong
+  const prevPage = () => {
+    playFlipSound();
+    bookRef.current?.pageFlip().flipPrev();
+  };
+  const nextPage = () => {
+    playFlipSound();
+    bookRef.current?.pageFlip().flipNext();
+  };
+
+  // Track trang hiện tại sau khi lật xong
+  const onFlip = (e) => setCurrentPage(e.data);
+
+  // Phát sound khi kéo thả trang (drag flip)
+  const onChangeState = (e) => {
+    if (e.data === 'flipping') playFlipSound();
+  };
+
+  // Đóng modal bằng phím Escape
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setIsZoomed(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Tính ảnh hiển thị trong zoom modal
+  const isCover  = currentPage === 0;
+  const leftImg  = getImageUrl(currentPage);
+  const rightImg = !isCover && currentPage + 1 <= 32 ? getImageUrl(currentPage + 1) : null;
 
   return (
-    <HTMLFlipBook 
-      width={370} 
-      height={500}
-      maxShadowOpacity={0.5}
-      drawShadow={true}
-      showCover={true}
-      size='fixed'
-    >
-      <div className="page" style={{ background: 'transparent' }}>
-        <div className="page-content cover">
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/9/98/International_Pok%C3%A9mon_logo.svg" 
-            alt="Pokémon Logo" 
-            className="pokemon-logo"
-          />
-        </div>
-      </div>
+    <>
+      {/* Nút zoom — cố định góc trên bên phải */}
+      <button className="zoom-fab" onClick={() => setIsZoomed(true)} title="Phóng to">
+        <i className="ri-zoom-in-line"></i>
+      </button>
 
-      {pokemonData.map((pokemon) => (
-        <div className="page" key={pokemon.id}>
-          <div className="page-content">
-            <div className="pokemon-container">
-              <img 
-                src={`https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/${pokemon.id}.png`} 
-                alt={pokemon.name} 
-              />
-              <div className="pokemon-info">
-                <h2 className="pokemon-name">{pokemon.name}</h2>
-                <p className="pokemon-number">#{pokemon.id}</p>
-                <div>
-                  {pokemon.types.map((type) => (
-                    <span key={type} className={`pokemon-type type-${type.toLowerCase()}`}>
-                      {type}
-                    </span>
-                  ))}
-                </div>
-                <p className="pokemon-description">{pokemon.description}</p>
-              </div>
-            </div>
+      <HTMLFlipBook
+        ref={bookRef}
+        width={460}
+        height={651}
+        maxShadowOpacity={0.5}
+        drawShadow={true}
+        showCover={true}
+        size='fixed'
+        onFlip={onFlip}
+        onChangeState={onChangeState}
+      >
+        {/* Bìa trước */}
+        <div className="page" style={{ background: 'transparent' }}>
+          <div className="page-image cover">
+            <img
+              src="/WorkbookTopic1.png"
+              alt="Workbook Topic 1 Cover"
+              className="cover-image"
+            />
           </div>
         </div>
-      ))}
-    </HTMLFlipBook>
+
+        {/* Các trang nội dung */}
+        {pages.map((pageNum) => (
+          <div className="page" key={pageNum}>
+            <div className="page-image">
+              <img
+                src={`/WorkbookPage${pageNum}.png`}
+                alt={`Trang ${pageNum}`}
+                className="cover-image"
+              />
+            </div>
+          </div>
+        ))}
+      </HTMLFlipBook>
+
+      {/* 2 nút điều hướng bên dưới sách */}
+      <div className="flip-controls">
+        <button className="flip-btn" onClick={prevPage}>
+          <i className="ri-corner-up-left-fill"></i>
+        </button>
+        <button className="flip-btn" onClick={nextPage}>
+          <i className="ri-corner-up-right-fill"></i>
+        </button>
+      </div>
+
+      {/* Zoom Modal */}
+      {isZoomed && (
+        <div className="zoom-overlay" onClick={() => setIsZoomed(false)}>
+          {/* Nút đóng */}
+          <button className="zoom-close" onClick={() => setIsZoomed(false)}>
+            <i className="ri-close-line"></i>
+          </button>
+
+          {/* Nội dung ảnh — stopPropagation để không đóng khi click vào ảnh */}
+          <div
+            className={`zoom-content ${isCover ? 'zoom-single' : 'zoom-spread'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img src={leftImg} alt="Trang trái" className="zoom-page" />
+            {rightImg && (
+              <img src={rightImg} alt="Trang phải" className="zoom-page" />
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

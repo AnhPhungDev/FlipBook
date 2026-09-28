@@ -17,18 +17,22 @@ function Book() {
   const [isZoomed, setIsZoomed]       = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
 
+  const isButtonFlip = useRef(false);
+
   const playFlipSound = () => {
     const audio = audioRef.current;
     audio.currentTime = 0;
     audio.play().catch(() => {});
   };
 
-  // Phát sound ngay khi nhấn nút — không đợi animation xong
+  // Nhấn nút: đánh dấu là button flip để onChangeState không phát âm thanh lần nữa
   const prevPage = () => {
+    isButtonFlip.current = true;
     playFlipSound();
     bookRef.current?.pageFlip().flipPrev();
   };
   const nextPage = () => {
+    isButtonFlip.current = true;
     playFlipSound();
     bookRef.current?.pageFlip().flipNext();
   };
@@ -36,9 +40,15 @@ function Book() {
   // Track trang hiện tại sau khi lật xong
   const onFlip = (e) => setCurrentPage(e.data);
 
-  // Phát sound khi kéo thả trang (drag flip)
+  // Drag chuột: 'user_fold' = thời điểm bắt đầu kéo trang
+  // Bỏ qua nếu là button flip (đã phát sound rồi)
   const onChangeState = (e) => {
-    if (e.data === 'flipping') playFlipSound();
+    if (e.data === 'user_fold') {
+      if (!isButtonFlip.current) {
+        playFlipSound();
+      }
+      isButtonFlip.current = false;
+    }
   };
 
   // Đóng modal bằng phím Escape
